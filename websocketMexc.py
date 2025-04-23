@@ -16,20 +16,33 @@ rango_usd = 2000
 orderbook = pd.DataFrame(columns=["price", "quantity", "side"])
 depth_lock = threading.Lock()
 
+# Función para cargar snapshot inicial
 def cargar_snapshot():
     url = "https://api.binance.com/api/v3/depth"
     params = {"symbol": symbol, "limit": 5000}
+    
     try:
         response = requests.get(url, params=params)
         data = response.json()
+
+        if not isinstance(data, dict) or "bids" not in data or "asks" not in data:
+            print("Error: La respuesta de la API no contiene 'bids' o 'asks'.")
+            print("Respuesta de la API:", data)
+            return pd.DataFrame()
+
+        # Procesamiento de los datos
         bids = pd.DataFrame(data["bids"], columns=["price", "quantity"], dtype=float)
         asks = pd.DataFrame(data["asks"], columns=["price", "quantity"], dtype=float)
         bids["side"] = "bid"
         asks["side"] = "ask"
-        return pd.concat([bids, asks])
+        snapshot = pd.concat([bids, asks])
+
+        return snapshot
+
     except Exception as e:
-        st.error(f"Error al cargar snapshot: {e}")
+        print(f"Error al obtener el snapshot: {e}")
         return pd.DataFrame()
+
 
 def aplicar_update(data):
     global orderbook
